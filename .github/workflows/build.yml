@@ -44,14 +44,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: webfactory/ssh-action@v1 # Changed back to webfactory/ssh-action
         with:
-          host: ${{ secrets.EC2_HOST }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: ${{ secrets.EC2_PORT }}
-          username: ${{ secrets.EC2_USER }}
-          strict: true # Changed to true for secure host key checking
-          known_hosts: ${{ secrets.KNOWN_HOSTS }} # Added known_hosts
+          ssh_private_key: ${{ secrets.EC2_SSH_KEY }}
+          ssh_known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          ssh_host: ${{ secrets.EC2_HOST }}
+          ssh_port: ${{ secrets.EC2_PORT }}
+          ssh_user: ${{ secrets.EC2_USER }}
           script: |
             echo "Logging in to EC2 instance..."
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
