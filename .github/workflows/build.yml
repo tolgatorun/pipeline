@@ -86,7 +86,7 @@ jobs:
                      docker rm hello-world-container
                    fi
                  fi } &&
-               docker run -d -p \$HOST_PORT:8000 --name hello-world-container ghcr.io/${{ github.repository }}:latest; then
+               docker run -d -p \$HOST_PORT --name hello-world-container ghcr.io/${{ github.repository }}:latest; then
               echo "Deployment successful!"
             else
               echo "Deployment failed!" >&2
