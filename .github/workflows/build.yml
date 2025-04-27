@@ -43,6 +43,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up SSH connection
         run: |
           echo "Setting up SSH key..."
@@ -79,9 +86,6 @@ jobs:
             set -e
             set -x
 
-            echo "Logging into GHCR on VPS..."
-            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
-
             echo "Pulling latest image..."
             docker pull ghcr.io/${{ github.repository }}:latest
 
@@ -97,7 +101,7 @@ jobs:
             fi
 
             docker run -d \
-              -p 80:8000 \
+              -p 80:${{ secrets.HOST_PORT }} \
               --name hello-world-container \
               ghcr.io/${{ github.repository }}:latest
 
@@ -106,5 +110,5 @@ jobs:
           if [ $? -ne 0 ]; then
             echo "SSH command failed" >&2
             exit 1
-          fi  
+          fi
 
