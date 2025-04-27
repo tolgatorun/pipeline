@@ -43,17 +43,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up SSH and Deploy
+      - name: Set up SSH connection
         run: |
           echo "Setting up SSH key..."
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa # Important: Remove CR
           chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-          echo "Connecting to EC2 instance and deploying..."
-          ssh -o StrictHostKeyChecking=yes \
-              -i ~/.ssh/id_rsa \
-              ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts # Use the stored known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          echo "Testing SSH connection..."
+          ssh -v -o StrictHostKeyChecking=yes -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} -p ${{ secrets.EC2_PORT }}  #Added port
+
+      - name: Deploy to EC2
+        run: |
+          echo "Connecting to EC2 instance..."
+          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} -p ${{ secrets.EC2_PORT }} << EOF
+            set -x # Debug: Print commands
             echo "Logged in to EC2"
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
             docker pull ghcr.io/${{ github.repository }}:latest
