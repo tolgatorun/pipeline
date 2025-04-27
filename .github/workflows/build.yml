@@ -77,7 +77,7 @@ jobs:
                docker pull ghcr.io/${{ github.repository }}:latest &&
                docker stop hello-world-container || true &&
                docker rm hello-world-container || true &&
-               HOST_PORT=${{ secrets.HOST_PORT:-80 }} &&
+               HOST_PORT=${{ secrets.HOST_PORT}} &&
                { if lsof -i :\$HOST_PORT; then
                    if [ "$(docker ps -q -f name=hello-world-container)" ]; then
                      docker stop hello-world-container
