@@ -54,26 +54,30 @@ jobs:
             exit 1
           fi
           chmod 400 ~/.ssh/id_25519
+          
           if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
             echo "KNOWN_HOSTS secret is empty" >&2
             exit 1
-          ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} || { echo "SSH connection test failed" >&2; exit 1; }
+          fi
+
           echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          if ! ssh-keygen -F ${{ secrets.VPS_HOST }} -f ~/.ssh/known_hosts > /dev/null; then
-            echo "KNOWN_HOSTS does not contain valid host entries for ${{ secrets.VPS_HOST }}" >&2
+          chmod 600 ~/.ssh/known_hosts
+
+          echo "Testing SSH connection..."
+          if ! ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} "exit"; then
+            echo "SSH connection test failed" >&2
             exit 1
           fi
-          chmod 600 ~/.ssh/known_hosts
-          echo "Testing SSH connection..."
-          ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }}
+
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
             echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secrets are not defined" >&2
             exit 1
           fi
+
           echo "Connecting to VPS instance..."
-          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << EOF2
-            set -e # Exit immediately if a command exits with a non-zero status
-            set -x # Print commands and their arguments as they are executed
+          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << 'EOF2'
+            set -e
+            set -x
 
             echo "Logging into GHCR on VPS..."
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
@@ -83,21 +87,22 @@ jobs:
 
             echo "Stopping existing container (if any)..."
             docker stop hello-world-container || true
-
-            echo "Removing existing container (if any)..."
             docker rm hello-world-container || true
 
             echo "Starting new container..."
-            HOST_PORT=${{ secrets.HOST_PORT}}
-            if [ -z "\$HOST_PORT" ]; then
+            HOST_PORT=${{ secrets.HOST_PORT }}
+            if [ -z "${HOST_PORT}" ]; then
               echo "HOST_PORT secret is not set or empty!" >&2
               exit 1
             fi
-            # Assuming container port is the same as host port. Adjust if needed: -p \$HOST_PORT:<container_port>
-            docker run -d -p \$HOST_PORT:\$HOST_PORT --name hello-world-container ghcr.io/${{ github.repository }}:latest
+
+            docker run -d \
+              -p ${HOST_PORT}:${HOST_PORT} \
+              --name hello-world-container \
+              ghcr.io/${{ github.repository }}:latest
 
             echo "Deployment successful!"
-          EOF2
+EOF2
           if [ $? -ne 0 ]; then
             echo "SSH command failed" >&2
             exit 1
