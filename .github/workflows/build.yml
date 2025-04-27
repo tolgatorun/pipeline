@@ -44,13 +44,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up SSH
-        uses: webfactory/ssh-action@v1
+        uses: appleboy/ssh-action@v1.0.3 # Changed action
         with:
-          ssh_private_key: ${{ secrets.EC2_SSH_KEY }}
-          ssh_known_hosts: ${{ secrets.KNOWN_HOSTS }}
-          ssh_host: ${{ secrets.EC2_HOST }}
-          ssh_port: ${{ secrets.EC2_PORT }}
-          ssh_user: ${{ secrets.EC2_USER }}
+          host: ${{ secrets.EC2_HOST }} # Changed variable name to host
+          key: ${{ secrets.EC2_SSH_KEY }} # Changed variable name to key
+          port: ${{ secrets.EC2_PORT }}
+          username: ${{ secrets.EC2_USER }} # Changed variable name to username
           script: |
             echo "Logging in to EC2 instance..."
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
