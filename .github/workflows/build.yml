@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up SSH
-        uses: webfactory/ssh-action@v1 # Changed back to webfactory/ssh-action
+        uses: webfactory/ssh-action@v1.1.0 # Updated to the latest version
         with:
           ssh_private_key: ${{ secrets.EC2_SSH_KEY }}
           ssh_known_hosts: ${{ secrets.KNOWN_HOSTS }}
