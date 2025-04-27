@@ -72,26 +72,34 @@ jobs:
           fi
           echo "Connecting to VPS instance..."
           ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << EOF2
-            set -x
-            echo "Logged in to VPS"
-            if docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io &&
-               docker pull ghcr.io/${{ github.repository }}:latest &&
-               docker stop hello-world-container || true &&
-               docker rm hello-world-container || true &&
-               HOST_PORT=${{ secrets.HOST_PORT}} &&
-               { if lsof -i :\$HOST_PORT; then
-                   if [ "$(docker ps -q -f name=hello-world-container)" ]; then
-                     docker stop hello-world-container
-                   fi
-                   if [ "$(docker ps -a -q -f name=hello-world-container)" ]; then
-                     docker rm hello-world-container
-                   fi
-                 fi } &&
-               docker run -d -p \$HOST_PORT --name hello-world-container ghcr.io/${{ github.repository }}:latest; then
-              echo "Deployment successful!"
-            else
-              echo "Deployment failed!" >&2
+            set -e # Exit immediately if a command exits with a non-zero status
+            set -x # Print commands and their arguments as they are executed
+
+            echo "Logging into GHCR on VPS..."
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
+
+            echo "Pulling latest image..."
+            docker pull ghcr.io/${{ github.repository }}:latest
+
+            echo "Stopping existing container (if any)..."
+            docker stop hello-world-container || true
+
+            echo "Removing existing container (if any)..."
+            docker rm hello-world-container || true
+
+            echo "Starting new container..."
+            HOST_PORT=${{ secrets.HOST_PORT}}
+            if [ -z "\$HOST_PORT" ]; then
+              echo "HOST_PORT secret is not set or empty!" >&2
               exit 1
             fi
-EOF2
+            # Assuming container port is the same as host port. Adjust if needed: -p \$HOST_PORT:<container_port>
+            docker run -d -p \$HOST_PORT:\$HOST_PORT --name hello-world-container ghcr.io/${{ github.repository }}:latest
+
+            echo "Deployment successful!"
+          EOF2
+          if [ $? -ne 0 ]; then
+            echo "SSH command failed" >&2
+            exit 1
+          fi
 
