@@ -97,7 +97,7 @@ jobs:
             fi
 
             docker run -d \
-              -p ${HOST_PORT}:${HOST_PORT} \
+              -p 80:8000 \
               --name hello-world-container \
               ghcr.io/${{ github.repository }}:latest
 
