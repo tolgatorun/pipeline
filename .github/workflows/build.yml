@@ -48,12 +48,12 @@ jobs:
           echo "Setting up SSH key..."
           mkdir -p ~/.ssh
           if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY" || echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN RSA PRIVATE KEY"; then
-            echo "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_25519
+            echo "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           else
             echo "Invalid SSH private key format" >&2
             exit 1
           fi
-          chmod 400 ~/.ssh/id_25519
+          chmod 400 ~/.ssh/id_ed25519
           
           if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
             echo "KNOWN_HOSTS secret is empty" >&2
@@ -64,7 +64,7 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
           echo "Testing SSH connection..."
-          if ! ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} "exit"; then
+          if ! ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} "exit"; then
             echo "SSH connection test failed" >&2
             exit 1
           fi
@@ -75,7 +75,7 @@ jobs:
           fi
 
           echo "Connecting to VPS instance..."
-          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << 'EOF2'
+          ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << 'EOF2'
             set -e
             set -x
 
