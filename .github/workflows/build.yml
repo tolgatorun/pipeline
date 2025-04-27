@@ -47,22 +47,54 @@ jobs:
         run: |
           echo "Setting up SSH key..."
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_25519
+          if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY" || echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN RSA PRIVATE KEY"; then
+            echo "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_25519
+          else
+            echo "Invalid SSH private key format" >&2
+            exit 1
+          fi
           chmod 400 ~/.ssh/id_25519
+          if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
+            echo "KNOWN_HOSTS secret is empty" >&2
+            exit 1
+          ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} || { echo "SSH connection test failed" >&2; exit 1; }
           echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          if ! ssh-keygen -F ${{ secrets.VPS_HOST }} -f ~/.ssh/known_hosts > /dev/null; then
+            echo "KNOWN_HOSTS does not contain valid host entries for ${{ secrets.VPS_HOST }}" >&2
+            exit 1
+          fi
           chmod 600 ~/.ssh/known_hosts
           echo "Testing SSH connection..."
-          ssh -v -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }}
-
-      - name: Deploy to VPS
-        run: |
+          ssh -q -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }}
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secrets are not defined" >&2
+            exit 1
           echo "Connecting to VPS instance..."
           ssh -o StrictHostKeyChecking=yes -i ~/.ssh/id_25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << EOF
             set -x
             echo "Logged in to VPS"
-            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
-            docker pull ghcr.io/${{ github.repository }}:latest
-            docker stop hello-world-container || true
+            if docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io &&
+               docker pull ghcr.io/${{ github.repository }}:latest &&
+               docker stop hello-world-container || true &&
+               docker rm hello-world-container || true &&
+               HOST_PORT=${{ secrets.HOST_PORT:-80 }} &&
+               { if lsof -i :\$HOST_PORT; then
+                   if [ "$(docker ps -q -f name=hello-world-container)" ]; then
+                     docker stop hello-world-container
+                   fi
+                   if [ "$(docker ps -a -q -f name=hello-world-container)" ]; then
+                     docker rm hello-world-container
+                   fi
+                 fi } &&
+               docker run -d -p \$HOST_PORT:8000 --name hello-world-container ghcr.io/${{ github.repository }}:latest; then
+              echo "Deployment successful!"
+            else
+              echo "Deployment failed!" >&2
+              exit 1
+            fi
+          EOF
+            echo "Deployment successful!"
+          EOF
             docker rm hello-world-container || true
             docker run -d -p 80:8000 --name hello-world-container ghcr.io/${{ github.repository }}:latest
             echo "Deployment successful!"
