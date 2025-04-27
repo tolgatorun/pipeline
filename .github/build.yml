@@ -1,0 +1,36 @@
+name: Test CI/CD
+
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Web Server
+        # Replace with your actual deployment commands
+        run: |
+          echo "Deploying index.html to mywebserver.com..."
+          # Example using rsync over SSH (replace with your details)
+          # rsync -avz index.html user@mywebserver.com:/var/www/html/
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking if the website is up..."
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://your-deployed-url.com)
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Deployment successful!"
+          else
+            echo "Deployment failed. HTTP status: $STATUS"
+            exit 1
+          fi
+          echo "Checking content..."
+          CONTENT=$(curl http://your-deployed-url.com)
+          if [[ "$CONTENT" == *"Hello World!"* ]]; then
+            echo "Content verification successful!"
+          else
+            echo "Content verification failed."
+            exit 1
+          fi
