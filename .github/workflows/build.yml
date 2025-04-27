@@ -44,12 +44,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up SSH
-        uses: appleboy/ssh-action@v1.0.3 # Changed action
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }} # Changed variable name to host
-          key: ${{ secrets.EC2_SSH_KEY }} # Changed variable name to key
+          host: ${{ secrets.EC2_HOST }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT }}
-          username: ${{ secrets.EC2_USER }} # Changed variable name to username
+          username: ${{ secrets.EC2_USER }}
+          strict: true # Changed to true for secure host key checking
+          known_hosts: ${{ secrets.KNOWN_HOSTS }} # Added known_hosts
           script: |
             echo "Logging in to EC2 instance..."
             docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} ghcr.io
